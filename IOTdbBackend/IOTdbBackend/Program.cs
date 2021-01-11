@@ -21,43 +21,36 @@ namespace IOTdbBackend
         public static List<IOTunit> IOTunitList;
         static void Main(string[] args)
         {
-
-            //Console.WriteLine(GetLocalIP().ToString());
-            //Console.WriteLine(DateTime.Now.ToString());
-            //connectDb();
             IOTunitList = new List<IOTunit>();
-            //ListenTCP();            
-            ListenTCPPB();
-            //GetData();
+            ListenTCP(); //Begins listening for TCP clients to serve
             Console.ReadLine();
         }
-        static void ListenTCPPB()
+        static void ListenTCP()
         {
             try
             {
                 TcpListener tcpListener = new TcpListener(GetLocalIP(), 11000);
-                tcpListener.Start();                
-
+                tcpListener.Start();
                 while (true)
                 {
                     Console.Write("Waiting for a connection... ");
-
                     TcpClient tcpClient = tcpListener.AcceptTcpClient();
                     Console.WriteLine("Connected!");
                     NetworkStream stream = tcpClient.GetStream();
 
-
-
                     Request clientRequest = new Request();
                     clientRequest = Request.Parser.ParseFrom(stream);
-
+                    
+                    //Checks if client wants to write to db
                     if (clientRequest.RequestType == "W")
                     {
-                        Console.WriteLine("was going to write data...");
-                        //WriteData(clientRequest.List);
+                        WriteData(clientRequest.List);
                     }
+
+                    //Checks if client wants to read from db
                     else if (clientRequest.RequestType == "R")
                     {
+                        // Waits for new stream from client for transfer
                         tcpClient = tcpListener.AcceptTcpClient();
                         Console.WriteLine("Connected for transfer!");
                         stream = tcpClient.GetStream();
@@ -86,93 +79,13 @@ namespace IOTdbBackend
             }
         }
 
-        static void ListenTCP()
-        {
-            try
-            {
-                TcpListener tcpListener = new TcpListener(GetLocalIP(), 11000);
-                tcpListener.Start();
-                // Byte[] bytes = new Byte[256];
-                // string msgR = null;
-
-                while (true)
-                {
-                    Console.Write("Waiting for a connection... ");
-
-                    TcpClient tcpClient = tcpListener.AcceptTcpClient();
-                    Console.WriteLine("Connected!");
-
-                    //msgR = null;
-
-                    NetworkStream stream = tcpClient.GetStream();
-
-                    GetData();
-                    SoapFormatter formatter = new SoapFormatter();
-                    MemoryStream mStream = new MemoryStream();
-                    formatter.Serialize(mStream, IOTunitList[0]);
-
-                    Byte[] bytes = mStream.GetBuffer();
-                    int bytes_size = (int)mStream.Length;
-                    Byte[] size = BitConverter.GetBytes(bytes_size);
-                    //stream.Write(size, 0, 4);
-                    stream.Write(bytes, 0, bytes_size);
-                    stream.Flush();
-
-                    mStream.Close();
-                    stream.Close();
-                    tcpClient.Close();
-
-                    /*
-                    int i;
-                    while ((i = stream.Read(bytes, 0, bytes.Length)) != 0)
-                    {
-                        msgR = System.Text.Encoding.ASCII.GetString(bytes, 0, i);
-                        Console.WriteLine("Recived: {0}", msgR);
-
-                        if (msgR[0].Equals('W'))
-                        {
-                            msgR.Remove(0);
-                            WriteData(msgR);
-                        }
-                        else if(msgR[0].Equals('R'))
-                        {
-                            GetData();
-                            SoapFormatter formatter = new SoapFormatter();
-
-                            formatter.Serialize(stream, IOTunitList[0]);
-                            //byte[] msg ;
-                            //stream.Write(msg, 0, msg.Length);
-                        }
-                        else
-                        {
-                            Console.WriteLine("Unknown intent with message command: {0}", msgR[0]);
-                            byte[] msg = Encoding.ASCII.GetBytes("F");
-                            stream.Write(msg, 0, msg.Length);
-                        }
-                        
-
-
-                    }
-                    tcpClient.Close();
-                    */
-                }
-
-
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-                Console.Read();
-            }
-        }
-
+        // Retrives data from DB
         static void GetData()
         {
             string connString = "server=127.0.0.1;uid=root;" + "pwd=P@55w.rd;database=iotunits";
             MySqlConnection conn = new MySqlConnection(connString);
             try
             {
-
                 string sql = "SELECT * FROM iotunits.iotunit";
                 MySqlCommand cmd = new MySqlCommand(sql, conn);
                 conn.Open();
@@ -197,32 +110,29 @@ namespace IOTdbBackend
             }
             return;
         }
+
+        //Writes data to DB
         static void WriteData(IotUnit unit)
         {
             string connString = "server=127.0.0.1;uid=root;" + "pwd=P@55w.rd;database=bilar";
             MySqlConnection conn = new MySqlConnection(connString);
             try
             {
-
                 string sql = "INSERT INTO `iotunits`.`iotunit` (`DeviceID`, `IPAdress`, `Timestamp`, `DeviceType`, `DeviceCategory`, `Value`, `Unit`) VALUES ('" + unit.DeviceID + "', '" + unit.IPadress + "', '" + DateTime.Now + "', '" + unit.DeviceType + "', '" + unit.DeviceCategory + "', '" + unit.Value + "', '" + unit.Unit + "')";
                 MySqlCommand cmd = new MySqlCommand(sql, conn);
                 conn.Open();
                 DataTable table = conn.GetSchema("Databases");
                 string tName = table.TableName;
                 MySqlDataReader reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-
-                }
+                while (reader.Read()) { }
                 conn.Close();
-                //DisplayData(table);
             }
             catch (MySqlException ex)
             {
                 Console.WriteLine(ex.Message);
             }
-
         }
+
         static private IPAddress GetLocalIP()
         {
             //Retrives the local computers IP from the DNS
