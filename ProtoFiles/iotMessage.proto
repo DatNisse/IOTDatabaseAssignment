@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+message Request
+{
+	string RequestType = 1;
+	optional IotUnit list = 2;
+}
+
+message IotUnitList{
+  repeated IotUnit list = 1;
+}
+
+message IotUnit {
+  string DeviceID = 1;
+  string IPadress = 2;
+  int64 Timestamp = 3;
+  string DeviceType = 4;
+  string DeviceCategory = 5;
+  double Value = 6;
+  string Unit = 7;
+}
